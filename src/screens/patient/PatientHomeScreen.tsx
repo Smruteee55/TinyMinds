@@ -1,9 +1,34 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Modal } from 'react-native';
 import { useStore, Routine } from '../../store/useStore';
 
 export default function PatientHomeScreen() {
   const { setRole, routines, toggleRoutine } = useStore();
+  const [sosVisible, setSosVisible] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (sosVisible && countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    } else if (sosVisible && countdown === 0) {
+      // Trigger actual SOS action here (e.g., API call, SMS)
+      alert('SOS Alert Sent to Emergency Contacts!');
+      setSosVisible(false);
+      setCountdown(3);
+    }
+    return () => clearTimeout(timer);
+  }, [sosVisible, countdown]);
+
+  const handleSOSPress = () => {
+    setSosVisible(true);
+    setCountdown(3);
+  };
+
+  const cancelSOS = () => {
+    setSosVisible(false);
+    setCountdown(3);
+  };
 
   const renderRoutine = ({ item }: { item: Routine }) => (
     <TouchableOpacity 
@@ -43,15 +68,29 @@ export default function PatientHomeScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      <TouchableOpacity style={styles.sosButton}>
+      <TouchableOpacity style={styles.sosButton} onPress={handleSOSPress}>
         <Text style={styles.sosText}>🚨 SOS - CALL FOR HELP</Text>
       </TouchableOpacity>
+
+      <Modal visible={sosVisible} transparent animationType="slide">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>🚨 SENDING SOS 🚨</Text>
+            <Text style={styles.modalText}>Alerting your parents and sending live GPS location in...</Text>
+            <Text style={styles.countdownText}>{countdown}</Text>
+            
+            <TouchableOpacity style={styles.cancelButton} onPress={cancelSOS}>
+              <Text style={styles.cancelButtonText}>CANCEL (I am okay)</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#E8F5E9' }, // Soft green pastel background
+  safeArea: { flex: 1, backgroundColor: '#E8F5E9' },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -121,5 +160,30 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 6,
   },
-  sosText: { color: 'white', fontSize: 18, fontWeight: 'bold' }
+  sosText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#EF5350',
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    width: '85%',
+  },
+  modalTitle: { fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 15 },
+  modalText: { fontSize: 18, color: 'white', textAlign: 'center', marginBottom: 20 },
+  countdownText: { fontSize: 80, fontWeight: 'bold', color: 'white', marginBottom: 30 },
+  cancelButton: {
+    backgroundColor: 'white',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    width: '100%',
+    alignItems: 'center',
+  },
+  cancelButtonText: { color: '#EF5350', fontSize: 18, fontWeight: 'bold' },
 });
