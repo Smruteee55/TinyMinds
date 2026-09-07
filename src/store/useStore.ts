@@ -15,6 +15,8 @@ interface AppState {
   // Mock Data for Patient Schedule
   routines: Routine[];
   toggleRoutine: (id: string) => void;
+  addRoutine: (routine: Omit<Routine, 'id' | 'completed'>) => void;
+  deleteRoutine: (id: string) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -34,5 +36,16 @@ export const useStore = create<AppState>((set) => ({
       routines: state.routines.map((routine) =>
         routine.id === id ? { ...routine, completed: !routine.completed } : routine
       ),
+    })),
+  addRoutine: (routine) =>
+    set((state) => ({
+      routines: [
+        ...state.routines,
+        { ...routine, id: Date.now().toString(), completed: false },
+      ],
+    })),
+  deleteRoutine: (id) =>
+    set((state) => ({
+      routines: state.routines.filter((routine) => routine.id !== id),
     })),
 }));
