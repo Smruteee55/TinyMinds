@@ -1,10 +1,11 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 
 export type Routine = {
   id: string;
   title: string;
   time: string;
-  icon: string; // We'll use expo-vector-icons names or emoji
+  icon: string;
   completed: boolean;
 };
 
@@ -12,40 +13,87 @@ interface AppState {
   role: 'patient' | 'caregiver' | null;
   setRole: (role: 'patient' | 'caregiver' | null) => void;
   
-  // Mock Data for Patient Schedule
   routines: Routine[];
-  toggleRoutine: (id: string) => void;
-  addRoutine: (routine: Omit<Routine, 'id' | 'completed'>) => void;
-  deleteRoutine: (id: string) => void;
+  isLoading: boolean;
+  
+  fetchRoutines: () => Promise<void>;
+  toggleRoutine: (id: string, currentStatus: boolean) => Promise<void>;
+  addRoutine: (routine: Omit<Routine, 'id' | 'completed'>) => Promise<void>;
+  deleteRoutine: (id: string) => Promise<void>;
 }
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>((set, get) => ({
   role: null,
   setRole: (role) => set({ role }),
 
-  routines: [
-    { id: '1', title: 'Wake Up', time: '7:00 AM', icon: '⏰', completed: true },
-    { id: '2', title: 'Brush Teeth', time: '7:15 AM', icon: '🪥', completed: false },
-    { id: '3', title: 'Get Dressed', time: '7:30 AM', icon: '👕', completed: false },
-    { id: '4', title: 'Eat Breakfast', time: '8:00 AM', icon: '🥣', completed: false },
-    { id: '5', title: 'Pack Backpack', time: '8:30 AM', icon: '🎒', completed: false },
-    { id: '6', title: 'Go to School', time: '9:00 AM', icon: '🚌', completed: false },
-  ],
-  toggleRoutine: (id) =>
+  routines: [],
+  isLoading: false,
+
+  fetchRoutines: async () => {
+    set({ isLoading: true });
+    const { data, error } = await supabase
+      .from('routines')
+      .select('*')
+      .order('created_at', { ascending: true });
+      
+    if (error) {
+      console.error('Error fetching routines:', error);
+    } else if (data) {
+      set({ routines: data as Routine[] });
+    }
+    set({ isLoading: false });
+  },
+
+  toggleRoutine: async (id, currentStatus) => {
+    // Optimistic UI update
     set((state) => ({
       routines: state.routines.map((routine) =>
-        routine.id === id ? { ...routine, completed: !routine.completed } : routine
+        routine.id === id ? { ...routine, completed: !currentStatus } : routine
       ),
-    })),
-  addRoutine: (routine) =>
-    set((state) => ({
-      routines: [
-        ...state.routines,
-        { ...routine, id: Date.now().toString(), completed: false },
-      ],
-    })),
-  deleteRoutine: (id) =>
+    }));
+
+    // Database update
+    const { error } = await supabase
+      .from('routines')
+      .update({ completed: !currentStatus })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating routine:', error);
+      // Revert optimistic update on error
+      get().fetchRoutines();
+    }
+  },
+
+  addRoutine: async (routine) => {
+    const { data, error } = await supabase
+      .from('routines')
+      .insert([{ ...routine, completed: false }])
+      .select();
+
+    if (error) {
+      console.error('Error adding routine:', error);
+    } else if (data) {
+      set((state) => ({
+        routines: [...state.routines, data[0] as Routine],
+      }));
+    }
+  },
+
+  deleteRoutine: async (id) => {
+    // Optimistic UI update
     set((state) => ({
       routines: state.routines.filter((routine) => routine.id !== id),
-    })),
+    }));
+
+    const { error } = await supabase
+      .from('routines')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting routine:', error);
+      get().fetchRoutines();
+    }
+  },
 }));

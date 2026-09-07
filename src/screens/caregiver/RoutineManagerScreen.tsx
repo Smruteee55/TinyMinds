@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, TextInput, Alert } from 'react-native';
 import { useStore, Routine } from '../../store/useStore';
 
 export default function RoutineManagerScreen() {
-  const { routines, addRoutine, deleteRoutine } = useStore();
+  const { routines, addRoutine, deleteRoutine, fetchRoutines } = useStore();
   const [newTitle, setNewTitle] = useState('');
   const [newTime, setNewTime] = useState('');
   const [newIcon, setNewIcon] = useState('');
+
+  useEffect(() => {
+    fetchRoutines();
+  }, []);
 
   const handleAddRoutine = () => {
     if (!newTitle || !newTime || !newIcon) {

@@ -3,9 +3,13 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Modal
 import { useStore, Routine } from '../../store/useStore';
 
 export default function PatientHomeScreen() {
-  const { setRole, routines, toggleRoutine } = useStore();
+  const { setRole, routines, toggleRoutine, fetchRoutines } = useStore();
   const [sosVisible, setSosVisible] = useState(false);
   const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    fetchRoutines();
+  }, []);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -33,7 +37,7 @@ export default function PatientHomeScreen() {
   const renderRoutine = ({ item }: { item: Routine }) => (
     <TouchableOpacity 
       style={[styles.routineCard, item.completed && styles.routineCardCompleted]} 
-      onPress={() => toggleRoutine(item.id)}
+      onPress={() => toggleRoutine(item.id, item.completed)}
       activeOpacity={0.8}
     >
       <View style={styles.iconContainer}>
